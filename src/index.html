@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Record Management System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- HEADER -->
+    <header>
+      <div class="brand">
+        <div class="logo">SR</div>
+        <div>
+          <h1>Student Record Manager</h1>
+          <p>Full Stack • Node.js + REST API + Vanilla JS</p>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="badge" id="roleDisplay"></div>
+        <button class="btn secondary" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- TABS -->
+      <div class="tabs">
+        <button class="tab-btn" data-tab="studentsTab">Students</button>
+        <button class="tab-btn" data-tab="attendanceTab">Attendance</button>
+        <button class="tab-btn" data-tab="marksTab">Marks</button>
+        <button class="tab-btn" data-tab="timetableTab">Timetable</button>
+        <button class="tab-btn" data-tab="profileTab">Profile</button>
+      </div>
+
+      <!-- STUDENTS TAB (ADMIN ONLY) -->
+      <section id="studentsTab" class="tab-page">
+        <section class="card">
+          <h2>Add / Edit Student</h2>
+          <p class="subtitle">Fill the details and click <b>Save Student</b>.</p>
+
+          <form id="studentForm">
+            <input type="hidden" id="studentId" />
+
+            <div class="grid">
+              <div class="field">
+                <label for="rollNo">Roll Number *</label>
+                <input type="text" id="rollNo" placeholder="e.g. 23CSE1001" />
+              </div>
+              <div class="field">
+                <label for="name">Name *</label>
+                <input type="text" id="name" placeholder="e.g. Bhaumik Hinunia" />
+              </div>
+              <div class="field">
+                <label for="department">Department</label>
+                <input type="text" id="department" placeholder="e.g. CSE" />
+              </div>
+              <div class="field">
+                <label for="semester">Semester</label>
+                <input type="text" id="semester" placeholder="e.g. 2" />
+              </div>
+              <div class="field">
+                <label for="cgpa">CGPA</label>
+                <input type="number" step="0.01" id="cgpa" placeholder="e.g. 8.5" />
+              </div>
+              <div class="field">
+                <label for="phone">Phone</label>
+                <input type="tel" id="phone" placeholder="e.g. 9876543210" />
+              </div>
+              <div class="field">
+                <label for="fatherName">Father Name</label>
+                <input type="text" id="fatherName" placeholder="e.g. Ramesh Kumar" />
+              </div>
+              <div class="field">
+                <label for="motherName">Mother Name</label>
+                <input type="text" id="motherName" placeholder="e.g. Sita Devi" />
+              </div>
+              <div class="field">
+                <label for="dob">Date of Birth</label>
+                <input type="date" id="dob" />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn primary">Save Student</button>
+              <button type="button" id="resetBtn" class="btn secondary">Clear Form</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="card-header-row">
+            <div>
+              <h2>Student Records</h2>
+              <p class="subtitle">Search, edit and delete records.</p>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" class="btn secondary btn-xs" id="exportStudentsBtn">
+                Export CSV
+              </button>
+              <input
+                type="text"
+                id="searchInput"
+                class="search"
+                placeholder="Search by roll no, name or department..."
+              />
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Name</th>
+                  <th>Dept</th>
+                  <th>Sem</th>
+                  <th>CGPA</th>
+                  <th>Phone</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody">
+                <tr>
+                  <td colspan="7" class="empty">Loading records...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <!-- ATTENDANCE TAB -->
+      <section id="attendanceTab" class="tab-page" style="display:none;">
+        <section class="card">
+          <h2>Attendance</h2>
+          <p class="subtitle">
+            Mark attendance for students and view summary.
+          </p>
+          <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+            <button type="button" class="btn secondary btn-xs" id="exportAttendanceBtn">
+              Export CSV
+            </button>
+          </div>
+          <div id="attendanceContainer"></div>
+        </section>
+      </section>
+
+      <!-- MARKS TAB -->
+      <section id="marksTab" class="tab-page" style="display:none;">
+        <section class="card">
+          <h2>Marks</h2>
+          <p class="subtitle">
+            Enter marks and view marks summary.
+          </p>
+          <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+            <button type="button" class="btn secondary btn-xs" id="exportMarksBtn">
+              Export CSV
+            </button>
+          </div>
+          <div id="marksContainer"></div>
+        </section>
+      </section>
+
+      <!-- TIMETABLE TAB -->
+      <section id="timetableTab" class="tab-page" style="display:none;">
+        <section class="card">
+          <h2>Timetable & Classroom Schedule</h2>
+          <p class="subtitle">
+            View and manage class timetable with subject, teacher and room details.
+          </p>
+          <div id="timetableContainer"></div>
+        </section>
+      </section>
+
+      <!-- PROFILE TAB -->
+      <section id="profileTab" class="tab-page" style="display:none;">
+        <section class="card">
+          <h2>Student Profile & Report Card</h2>
+          <p class="subtitle">
+            View student details, attendance percentage and marks, and print a report card.
+          </p>
+          <div id="profileContainer"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <span>Student Record Management System</span>
+      <span>Designed for College Project</span>
+    </footer>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Hidden input for Admin photo upload -->
+  <input type="file" id="adminPhotoInput" accept="image/*" style="display:none" />
+
+  <!-- ORDER MATTERS -->
+  <script src="attendance.js"></script>
+  <script src="marks.js"></script>
+  <script src="timetable.js"></script>
+  <script src="profile.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

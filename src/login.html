@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login | Student Record Management System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body style="background:#eef2f7;">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <h2>Login</h2>
+      <p class="subtitle">Use one of the following:</p>
+      <ul style="font-size:13px; margin-bottom:10px; padding-left:18px; color:#555;">
+        <li>Admin → <b>admin / admin123</b></li>
+        <li>Teacher → <b>teacher1 / t123</b> or <b>teacher2 / t123</b></li>
+        <li>Student → <b>rollNo / rollNo</b> (example: 23CSE1001)</li>
+      </ul>
+
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="admin / teacher1 / rollNo" />
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••" />
+      </div>
+
+      <button class="btn primary" id="loginBtn" style="margin-top:16px; width:100%;">Login</button>
+
+      <p id="loginError" style="color:#d20000; font-size:13px; margin-top:8px; display:none;">
+        Invalid username or password
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const loginBtn = document.getElementById("loginBtn");
+    const errorMsg = document.getElementById("loginError");
+
+    const fixedUsers = [
+      { username: "admin",    password: "admin123", role: "admin" },
+      { username: "teacher1", password: "t123",     role: "teacher" },
+      { username: "teacher2", password: "t123",     role: "teacher" }
+    ];
+
+    async function handleLogin() {
+      const user = document.getElementById("username").value.trim();
+      const pass = document.getElementById("password").value.trim();
+      errorMsg.style.display = "none";
+
+      if (!user || !pass) {
+        errorMsg.textContent = "Enter username and password.";
+        errorMsg.style.display = "block";
+        return;
+      }
+
+      // 1) Check admin/teacher
+      const fixed = fixedUsers.find(
+        (u) => u.username === user && u.password === pass
+      );
+      if (fixed) {
+        localStorage.setItem("loggedIn", "true");
+        localStorage.setItem("role", fixed.role);
+        localStorage.removeItem("studentId");
+        window.location.href = "index.html";
+        return;
+      }
+
+      // 2) Check student: rollNo = username = password
+      if (user === pass) {
+        try {
+          const res = await fetch("/api/students");
+          const students = await res.json();
+          const found = students.find((s) => s.rollNo === user);
+          if (found) {
+            localStorage.setItem("loggedIn", "true");
+            localStorage.setItem("role", "student");
+            localStorage.setItem("studentId", String(found.id));
+            window.location.href = "index.html";
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      errorMsg.textContent = "Invalid username or password.";
+      errorMsg.style.display = "block";
+    }
+
+    loginBtn.addEventListener("click", handleLogin);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleLogin();
+    });
+
+    // Already logged in -> go directly to dashboard
+    if (localStorage.getItem("loggedIn") === "true") {
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>
