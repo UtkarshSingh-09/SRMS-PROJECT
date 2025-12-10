@@ -4,87 +4,120 @@ import json
 import os
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="SRMS Student Portal", layout="centered")
+st.set_page_config(page_title="SRMS Portal", layout="centered")
 
-# --- LOAD DATA FUNCTIONS ---
-# We read directly from your existing 'backend' folder
+# --- LOAD DATA FUNCTION ---
 def load_json(filename):
+    # Adjust path if your folder structure is different (e.g. just "students.json")
     path = os.path.join("backend", filename)
     if not os.path.exists(path):
-        st.error(f"File not found: {path}")
-        return []
+        # Fallback: try loading from root if backend folder doesn't exist
+        if os.path.exists(filename):
+            path = filename
+        else:
+            return []
     with open(path, "r") as f:
         return json.load(f)
 
-# --- AUTHENTICATION LOGIC ---
-if 'user' not in st.session_state:
-    st.session_state.user = None
-
-def login(username, password):
-    students = load_json("students.json")
-    # This logic assumes your JSON is a list of student objects
-    # Adjust key names 'username'/'id' and 'password' based on your actual JSON structure
-    for student in students:
-        # Check if username matches (assuming 'id' or 'username' key exists)
-        if str(student.get('id', '')) == username and student.get('password', '') == password:
-            st.session_state.user = student
-            st.rerun()
-    st.error("Invalid Login Credentials")
-
-def logout():
-    st.session_state.user = None
-    st.rerun()
-
-# --- MAIN APP INTERFACE ---
-if st.session_state.user is None:
-    # === LOGIN SCREEN ===
-    st.title("🎓 Student Login")
+# --- LOGIN LOGIC (MATCHING YOUR HTML) ---
+def check_login(username, password):
+    # 1. Check Hardcoded Admin/Teacher Credentials
+    fixed_users = [
+        {"u": "admin",    "p": "admin123", "role": "admin"},
+        {"u": "teacher1", "p": "t123",     "role": "teacher"},
+        {"u": "teacher2", "p": "t123",     "role": "teacher"}
+    ]
     
-    # Simple styling to mimic your login.html
+    for user in fixed_users:
+        if username == user["u"] and password == user["p"]:
+            return {"role": user["role"], "data": None}
+
+    # 2. Check Student (Logic: Username == Password)
+    if username == password:
+        students = load_json("students.json")
+        # Search for student with matching rollNo
+        for student in students:
+            # We use .get() to avoid errors if key is missing
+            # checking 'rollNo' because that's what your JS used
+            roll_no = str(student.get("rollNo", "")).strip() 
+            if roll_no == username:
+                return {"role": "student", "data": student}
+    
+    return None
+
+# --- SESSION STATE SETUP ---
+if "user_session" not in st.session_state:
+    st.session_state.user_session = None
+
+# --- MAIN APP ---
+
+if st.session_state.user_session is None:
+    # === LOGIN SCREEN ===
+    st.title("🎓 SRMS Login")
+    
     with st.form("login_form"):
-        username = st.text_input("Student ID")
+        st.info("💡 Student Login: Use Roll No for BOTH username & password.")
+        username = st.text_input("Username / Roll No")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Login")
         
         if submitted:
-            login(username, password)
+            result = check_login(username.strip(), password.strip())
+            
+            if result:
+                st.session_state.user_session = result
+                st.rerun()
+            else:
+                st.error("Invalid Credentials. (For students: Ensure Username matches Password)")
 
 else:
-    # === DASHBOARD SCREEN (Replaces index.html) ===
-    student = st.session_state.user
-    st.sidebar.title(f"Welcome, {student.get('name', 'Student')}")
-    if st.sidebar.button("Logout"):
-        logout()
-
-    st.title("Student Dashboard")
+    # === DASHBOARD (LOGGED IN) ===
+    session = st.session_state.user_session
+    role = session["role"]
     
-    # Create Tabs for your different sections
-    tab1, tab2, tab3 = st.tabs(["📋 Profile", "📊 Marks", "📅 Attendance"])
+    # Sidebar
+    st.sidebar.title(f"Role: {role.capitalize()}")
+    if st.sidebar.button("Logout"):
+        st.session_state.user_session = None
+        st.rerun()
 
-    with tab1:
-        st.header("Student Profile")
-        st.json(student) # Displays the student info nicely
-
-    with tab2:
-        st.header("Your Marks")
-        all_marks = load_json("marks.json")
-        # Filter marks for the logged-in student (assuming marks.json has 'student_id')
-        student_marks = [m for m in all_marks if str(m.get('student_id')) == str(student.get('id'))]
+    # --- STUDENT VIEW ---
+    if role == "student":
+        student = session["data"]
+        st.title(f"Welcome, {student.get('name', 'Student')}")
         
-        if student_marks:
-            df = pd.DataFrame(student_marks)
-            st.dataframe(df)
-        else:
-            st.info("No marks found for this student.")
-
-    with tab3:
-        st.header("Attendance Record")
-        attendance_data = load_json("attendance.json")
-        # Filter attendance (assuming attendance.json has 'student_id')
-        my_attendance = [a for a in attendance_data if str(a.get('student_id')) == str(student.get('id'))]
+        tab1, tab2, tab3 = st.tabs(["📋 Profile", "📊 Marks", "📅 Attendance"])
         
-        if my_attendance:
-            df_att = pd.DataFrame(my_attendance)
-            st.dataframe(df_att)
-        else:
-            st.info("No attendance records found.")
+        with tab1:
+            st.subheader("Student Details")
+            st.json(student)
+            
+        with tab2:
+            st.subheader("Marks Sheet")
+            all_marks = load_json("marks.json")
+            # Filter marks by student ID (assuming 'id' connects them)
+            my_marks = [m for m in all_marks if str(m.get('student_id')) == str(student.get('id'))]
+            if my_marks:
+                st.dataframe(pd.DataFrame(my_marks))
+            else:
+                st.info("No marks found.")
+
+        with tab3:
+            st.subheader("Attendance")
+            all_att = load_json("attendance.json")
+            # Filter attendance
+            my_att = [a for a in all_att if str(a.get('student_id')) == str(student.get('id'))]
+            if my_att:
+                st.dataframe(pd.DataFrame(my_att))
+            else:
+                st.info("No attendance records found.")
+
+    # --- ADMIN / TEACHER VIEW ---
+    else:
+        st.title("Teacher/Admin Dashboard")
+        st.warning("⚠️ This view is currently under construction in Streamlit.")
+        st.write("You are logged in as:", role)
+        
+        # Show raw data for teachers to debug
+        if st.checkbox("Show All Students Data"):
+            st.json(load_json("students.json"))
