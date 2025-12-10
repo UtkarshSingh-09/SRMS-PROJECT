@@ -24,10 +24,9 @@ if not os.path.exists(BASE_DIR):
     os.makedirs(BASE_DIR)
 
 # ==========================================
-# 📂 DATA HANDLING (Replaces server.js)
+# 📂 DATA HANDLING
 # ==========================================
 def load_data(key):
-    """Loads JSON data safely. If file missing, returns empty list."""
     path = FILES[key]
     if not os.path.exists(path):
         return []
@@ -38,12 +37,11 @@ def load_data(key):
         return []
 
 def save_data(key, data):
-    """Saves data back to JSON."""
     with open(FILES[key], "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 # ==========================================
-# 🔐 AUTHENTICATION (Replaces login.html)
+# 🔐 AUTHENTICATION
 # ==========================================
 def check_login(username, password):
     # 1. Hardcoded Admin/Teacher
@@ -59,7 +57,6 @@ def check_login(username, password):
     # 2. Student Login (RollNo == Password)
     if username == password:
         students = load_data("students")
-        # Find student where rollNo matches username
         student = next((s for s in students if str(s.get("rollNo", "")).strip() == username), None)
         if student:
             return {"role": "student", "data": student}
@@ -70,7 +67,6 @@ def logout():
     st.session_state.user_session = None
     st.rerun()
 
-# Initialize Session State
 if "user_session" not in st.session_state:
     st.session_state.user_session = None
 
@@ -98,7 +94,7 @@ if st.session_state.user_session is None:
                     time.sleep(0.5)
                     st.rerun()
                 else:
-                    st.error("Invalid Credentials. Please try again.")
+                    st.error("Invalid Credentials.")
 
 # --- 2. DASHBOARD ---
 else:
@@ -120,22 +116,29 @@ else:
     if role == "student":
         st.title(f"Welcome, {user_data.get('name')} 👋")
         
-        # Tabs matching your index.html structure
         tab1, tab2, tab3, tab4 = st.tabs(["📋 Profile", "📊 Marks", "📅 Attendance", "🕒 Timetable"])
 
         with tab1:
             st.subheader("Student Profile")
-            # Display student data as a clean table
-            profile_df = pd.DataFrame([user_data]).T
-            profile_df.columns = ["Details"]
-            st.table(profile_df)
+            # Custom Layout for Profile Details
+            c1, c2 = st.columns(2)
+            with c1:
+                st.text_input("Full Name", user_data.get('name', ''), disabled=True)
+                st.text_input("Roll Number", user_data.get('rollNo', ''), disabled=True)
+                st.text_input("Department", user_data.get('department', ''), disabled=True)
+                st.text_input("Semester", user_data.get('semester', ''), disabled=True)
+                st.text_input("Date of Birth", user_data.get('dob', ''), disabled=True)
+
+            with c2:
+                st.text_input("CGPA", user_data.get('cgpa', ''), disabled=True)
+                st.text_input("Phone", user_data.get('phone', ''), disabled=True)
+                st.text_input("Father's Name", user_data.get('fatherName', ''), disabled=True)
+                st.text_input("Mother's Name", user_data.get('motherName', ''), disabled=True)
 
         with tab2:
             st.subheader("My Marks")
             all_marks = load_data("marks")
-            # Filter marks for this student (using ID)
             my_marks = [m for m in all_marks if str(m.get('studentId')) == str(user_data.get('id'))]
-            
             if my_marks:
                 st.dataframe(pd.DataFrame(my_marks)[['subject', 'exam', 'marks']], use_container_width=True)
             else:
@@ -145,15 +148,12 @@ else:
             st.subheader("Attendance Record")
             all_att = load_data("attendance")
             my_att = [a for a in all_att if str(a.get('studentId')) == str(user_data.get('id'))]
-            
             if my_att:
                 df_att = pd.DataFrame(my_att)
                 st.dataframe(df_att[['date', 'status']], use_container_width=True)
-                
-                # Simple stats
+                # Stats
                 present = len([x for x in my_att if x['status'] == 'P'])
-                total = len(my_att)
-                st.metric("Attendance Percentage", f"{int((present/total)*100)}%")
+                st.metric("Attendance Percentage", f"{int((present/len(my_att))*100)}%")
             else:
                 st.info("No attendance records found.")
 
@@ -173,33 +173,43 @@ else:
 
         with tab_students:
             st.subheader("Student Database")
-            
-            # Load current students
             students_list = load_data("students")
             
             # --- ADD NEW STUDENT FORM ---
-            with st.expander("➕ Add New Student"):
+            with st.expander("➕ Add New Student", expanded=False):
                 with st.form("add_student"):
+                    st.write("**Personal Details**")
                     c1, c2 = st.columns(2)
-                    new_roll = c1.text_input("Roll No")
-                    new_name = c2.text_input("Name")
-                    new_dept = c1.text_input("Department")
-                    new_sem = c2.text_input("Semester")
-                    new_phone = c1.text_input("Phone")
+                    new_roll = c1.text_input("Roll No *")
+                    new_name = c2.text_input("Name *")
+                    new_father = c1.text_input("Father's Name")
+                    new_mother = c2.text_input("Mother's Name")
+                    new_dob = c1.date_input("Date of Birth")
+                    new_phone = c2.text_input("Phone")
                     
-                    if st.form_submit_button("Save Student"):
+                    st.write("**Academic Details**")
+                    c3, c4 = st.columns(2)
+                    new_dept = c3.text_input("Department")
+                    new_sem = c4.text_input("Semester")
+                    new_cgpa = c3.text_input("CGPA")
+
+                    if st.form_submit_button("Save Student", type="primary"):
                         if new_roll and new_name:
                             new_entry = {
-                                "id": int(time.time() * 1000), # Generate ID like JS Date.now()
+                                "id": int(time.time() * 1000),
                                 "rollNo": new_roll,
                                 "name": new_name,
                                 "department": new_dept,
                                 "semester": new_sem,
-                                "phone": new_phone
+                                "cgpa": new_cgpa,
+                                "phone": new_phone,
+                                "fatherName": new_father,
+                                "motherName": new_mother,
+                                "dob": str(new_dob)
                             }
                             students_list.append(new_entry)
                             save_data("students", students_list)
-                            st.success(f"Added {new_name}!")
+                            st.success(f"Added {new_name} successfully!")
                             time.sleep(1)
                             st.rerun()
                         else:
@@ -208,9 +218,12 @@ else:
             # --- DISPLAY STUDENTS ---
             if students_list:
                 df_students = pd.DataFrame(students_list)
+                # Select only specific columns to show in the main table to avoid clutter
+                display_cols = ['rollNo', 'name', 'department', 'semester', 'cgpa', 'phone']
+                # Filter columns that actually exist in the data
+                available_cols = [c for c in display_cols if c in df_students.columns]
                 
-                # Display simply first, allow delete via ID selection
-                st.dataframe(df_students, use_container_width=True)
+                st.dataframe(df_students[available_cols], use_container_width=True)
                 
                 # Delete logic
                 st.write("---")
